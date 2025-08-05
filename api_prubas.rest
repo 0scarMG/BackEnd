@@ -1,0 +1,56 @@
+### Obtener todos los usuarios y ver que esta consulta es privada y si no hay
+### TOKEN NO DEVUELVE LOS USUARIOS
+GET http://localhost:5000/api/users
+
+### Obtener todos los productos
+GET http://localhost:5000/api/products
+
+### Obtener un categoría por ID
+GET http://localhost:5000/api/categories
+
+
+#### Crear Producto 2: TXT
+POST http://localhost:5000/api/products
+Content-Type: application/json
+
+{
+    "name": "TXT The Star Chapter: Together",
+    "imageUrl": "/assets/images/prod-2.jpg",
+    "price": 399.00,
+    "description": "Descripción del producto.",
+    "category": "687c6970bd0ddf6608eb10d9",
+    "originalPrice": 499.00,
+    "discountPercentage": 20,
+    "stock": 100,
+    "linkUrl": "https://example.com/product-txt-2"
+}
+
+### registrar un usuario
+POST http://localhost:5000/api/users/register
+Content-Type: application/json
+
+{
+    "name": "Nuevo Usuario",
+    "email": "nuevo@usuario.com",
+    "password": "contraseña123"
+}
+
+### Login de usuario
+POST http://localhost:5000/api/users/login
+Content-Type: application/json
+
+{
+    "email": "samir@gmail.com",
+    "password": "123456"
+}
+
+
+###
+PUT http://localhost:5000/api/users/me
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NjY4ZmUzYzVkNmQ1MWJlMmUwNDAzOCIsImlhdCI6MTc1MzQ4OTY1NCwiZXhwIjoxNzUzNDkzMjU0fQ.0mP9j3ls8dKrI3u4ruXX7H5ALGm8wBRR4m1lbsBbO-o
+
+{
+  "newEmail": "nuevo@gmail.com",
+  "currentPassword": "123456"
+}
