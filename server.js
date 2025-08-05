@@ -21,6 +21,7 @@ connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+app.listen(PORT, '0.0.0.0', () => console.log(`Servidor corriendo en el puerto ${PORT}`));
 
 const corsOptions = {
   origin: 'http://localhost:4200',
