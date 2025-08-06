@@ -18,7 +18,15 @@ const userSchema = new Schema(
         },
         imageUrl: {
             type: String,
-            required: [true, 'Por favor agrega una imagen'],
+            required: [false],
+        },
+        address: {
+            type: String,
+            required: [false],
+        },
+        phone: {
+            type: String,
+            required: [false],
         },
         password: {
             type: String,
