@@ -1,4 +1,5 @@
 import express from 'express';
+import { googleLogin } from '../controllers/UserController.js';
 const router = express.Router();
 
 // 1. Importa TODOS los controladores que necesitas
@@ -32,6 +33,10 @@ router.post('/logout', (req, res) => {
   res.clearCookie('authToken');
   res.status(200).json({ message: 'Sesión cerrada exitosamente.' });
 });
+
+
+
+router.post('/google-login', googleLogin);
 
 
 export default router;

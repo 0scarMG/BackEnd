@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Servidor corriendo en el puerto ${PORT}`));
 
 const corsOptions = {
-  origin: 'http://localhost:4200',
+  origin: 'https://kstoreutj.netlify.app',
 };
 // Middlewares
 app.use(cookieParser());
@@ -38,14 +38,3 @@ app.use('/api/categories', CategoryRouter);
 app.use('/api/products', ProductRouter);
 app.use('/api/cart', CartRouter); 
 app.use('/api/artists', ArtistRouter);
-
-// Ruta de prueba
-/*
-app.get('/', (req, res) => {
-    res.send('API corriendo...');
-});
-*/
-
-
-
-app.listen(PORT, () => console.log(`Servidor corriendo en el puerto ${PORT}`));

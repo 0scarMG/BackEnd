@@ -2,6 +2,8 @@
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // @desc    Generar un token JWT
 const generateToken = (user) => { 
@@ -193,5 +195,62 @@ export const updateUserProfile = async (req, res) => {
         }
     } catch (error) {
         res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+};
+
+// @desc    Autenticar o registrar un usuario con Google
+// @route   POST /api/users/google-login
+// @access  Public
+export const googleLogin = async (req, res) => {
+    const { idToken } = req.body;
+
+    try {
+        // 1. Verificar el idToken con los servidores de Google
+        const ticket = await client.verifyIdToken({
+            idToken,
+            audience: process.env.GOOGLE_CLIENT_ID, // El mismo Client ID
+        });
+        const { name, email } = ticket.getPayload();
+
+        // 2. Buscar si el usuario ya existe en nuestra BD
+        let user = await User.findOne({ email });
+
+        if (user) {
+            // Si el usuario existe, simplemente generamos un token para él
+            const token = generateToken(user._id);
+            res.status(200).json({
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                token,
+            });
+        } else {
+            // 3. Si el usuario no existe, lo creamos
+            // Creamos una contraseña aleatoria y la hasheamos (no se usará para login)
+            const password = Math.random().toString(36).slice(-8);
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            const newUser = await User.create({
+                name,
+                email,
+                password: hashedPassword,
+            });
+
+            if (newUser) {
+                const token = generateToken(newUser._id);
+                res.status(201).json({
+                    _id: newUser._id,
+                    name: newUser.name,
+                    email: newUser.email,
+                    token,
+                });
+            } else {
+                res.status(400).json({ message: 'No se pudo crear el usuario.' });
+            }
+        }
+    } catch (error) {
+        console.error("Error en el login con Google:", error);
+        res.status(401).json({ message: 'Autenticación con Google fallida.' });
     }
 };
