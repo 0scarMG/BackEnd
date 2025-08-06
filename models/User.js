@@ -9,7 +9,7 @@ const userSchema = new Schema(
         },
         latestName: {
             type: String,
-            required: [true, 'Por favor agrega un apellido'],
+            required: [false],
         },
         email: {
             type: String,
