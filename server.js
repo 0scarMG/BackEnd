@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => console.log(`Servidor corriendo en el puerto ${PORT}`));
 
 const corsOptions = {
-  origins: ['http://localhost:4200', 'http://localhost:8081'],
+  origins: ['http://localhost:4200', 'http://localhost:8081', 'exp://192.168.22.34:8081'],
 };
 // Middlewares
 app.use(cookieParser());
