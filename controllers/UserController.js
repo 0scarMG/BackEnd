@@ -246,3 +246,44 @@ export const googleLogin = async (req, res) => {
         res.status(401).json({ message: 'Autenticación con Google fallida.' });
     }
 };
+
+//@desc    Autenticar un usuario (Inicio de Sesión)
+// @route   POST /api/users/login
+// @access  Public
+export const webLoginUser = async (req, res) => {
+    const { email, password } = req.body;
+
+    const trimmedEmail = email ? email.trim() : '';
+    const trimmedPassword = password ? password.trim() : '';
+
+    if (!trimmedEmail || !trimmedPassword) {
+        return res.status(400).json({ message: 'Por favor, introduce tu correo electrónico y contraseña.' });
+    }
+
+    try {
+        const user = await User.findOne({ email: trimmedEmail });
+
+        if (user && (await bcrypt.compare(trimmedPassword, user.password))) {
+            const token = generateToken(user);
+
+            // Guardamos el token en una cookie segura
+            res.cookie('authToken', token, {
+            httpOnly: true, // El frontend no puede leer/modificar esta cookie con JS
+            secure: process.env.NODE_ENV === 'production', // Solo enviar en HTTPS en producción
+            sameSite: 'strict',
+            maxAge: 60 * 60 * 1000 // 1 hora, igual que el token
+            });
+
+            return res.status(200).json({
+            user: { _id: user._id, name: user.name, email: user.email, role: user.role },
+            token: token,
+            });
+        } else {
+            return res.status(400).json({ message: 'Credenciales inválidas.' });
+        }
+
+    } catch (error) {
+        console.error("Error en el inicio de sesión:", error);
+        res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+};

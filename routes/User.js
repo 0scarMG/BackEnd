@@ -8,7 +8,8 @@ import {
     createUser, 
     loginUser,
     getUserProfile,
-    updateUserProfile
+    updateUserProfile,
+    webLoginUser
 } from '../controllers/UserController.js';
 
 // 2. Importa el middleware de protección
@@ -17,6 +18,8 @@ import protect from '../middleware/authMiddleware.js';
 // --- Rutas Públicas (Cualquiera puede acceder) ---
 router.post('/register', createUser);
 router.post('/login', loginUser);
+router.post('/wlogin', webLoginUser);
+
 
 
 // --- Rutas Privadas (Solo usuarios con un token válido pueden acceder) ---
