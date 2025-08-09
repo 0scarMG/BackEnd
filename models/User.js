@@ -44,10 +44,9 @@ const userSchema = new Schema(
             enum: ['client', 'admin', 'employee'], 
             default: 'client',
          },
-    },
-    {
-        timestamps: true, 
-    }
-);
+          passwordResetCode: String,
+          passwordResetExpires: Date,
+        
+        }, { timestamps: true });
 
 export default model('User', userSchema);

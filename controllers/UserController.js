@@ -3,6 +3,8 @@ import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
+import { sendVerificationEmail } from '../config/mailer.js';
+import crypto from 'crypto';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // @desc    Generar un token JWT
@@ -285,5 +287,64 @@ export const webLoginUser = async (req, res) => {
     } catch (error) {
         console.error("Error en el inicio de sesión:", error);
         res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+};
+
+
+//correo de restauracion de contraseña
+export const forgotPassword = async (req, res) => {
+    try {
+        const user = await User.findOne({ email: req.body.email });
+        if (!user) {
+            return res.status(404).json({ message: 'No existe un usuario con ese correo.' });
+        }
+
+        // Generar un código de 6 dígitos
+        const resetCode = crypto.randomInt(100000, 999999).toString();
+        
+        user.passwordResetCode = resetCode;
+        // El código expira en 10 minutos
+        user.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+        await user.save();
+
+        // Enviar el correo
+        await sendVerificationEmail(user.email, resetCode);
+
+        res.status(200).json({ message: 'Código de verificación enviado a tu correo.' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error al procesar la solicitud.' });
+    }
+};
+
+// FUNCIÓN 2: VERIFICAR CÓDIGO Y RESTABLECER CONTRASEÑA
+export const resetPassword = async (req, res) => {
+    const { email, code, newPassword } = req.body;
+    try {
+        const user = await User.findOne({
+            email: email,
+            passwordResetCode: code,
+            passwordResetExpires: { $gt: Date.now() } // Comprueba que no haya expirado
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: 'El código es incorrecto o ha expirado.' });
+        }
+
+        // Hashear la nueva contraseña
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        
+        // Limpiar los campos de reseteo
+        user.passwordResetCode = undefined;
+        user.passwordResetExpires = undefined;
+        await user.save();
+
+        res.status(200).json({ message: 'Contraseña actualizada con éxito.' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error al restablecer la contraseña.' });
     }
 };

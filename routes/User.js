@@ -36,7 +36,17 @@ router.post('/logout', (req, res) => {
   res.clearCookie('authToken');
   res.status(200).json({ message: 'Sesión cerrada exitosamente.' });
 });
+// ... tus importaciones y rutas existentes ...
 
+import { forgotPassword, resetPassword } from '../controllers/UserController.js';
+
+// ...
+router.post('/login', loginUser);
+router.post('/register', createUser);
+
+// --- ✅ NUEVAS RUTAS ---
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 
 router.post('/google-login', googleLogin);
