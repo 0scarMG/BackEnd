@@ -9,11 +9,15 @@ import {
     loginUser,
     getUserProfile,
     updateUserProfile,
-    webLoginUser
+    webLoginUser,
+    getAllUsers,
+    getUserById,
+    updateUser,
+    deleteUser
 } from '../controllers/UserController.js';
 
-// 2. Importa el middleware de protección
-import protect from '../middleware/authMiddleware.js';
+import protect from '../middleware/authMiddleware.js'
+import { authorize } from '../middleware/authzMiddleware.js';
 
 // --- Rutas Públicas (Cualquiera puede acceder) ---
 router.post('/register', createUser);
@@ -31,6 +35,14 @@ router.route('/me')
 
 // Ruta para obtener la lista de todos los usuarios (también protegida)
 router.get('/', protect, getUsers); // GET /api/users
+
+router.route('/all')
+  .get(protect, authorize('admin'), getAllUsers);
+
+router.route('/:id')
+  .get(protect, authorize('admin'), getUserById)
+  .put(protect, authorize('admin'), updateUser)
+  .delete(protect, authorize('admin'), deleteUser);
 
 router.post('/logout', (req, res) => {
   res.clearCookie('authToken');

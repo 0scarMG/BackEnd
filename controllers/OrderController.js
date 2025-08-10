@@ -95,6 +95,23 @@ export const updateOrderStatus = async (req, res) => {
   }
 };
 
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Orden no encontrada.' });
+    }
+
+    order.status = status;
+    await order.save();
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar la orden.' });
+  }
+};
+
 // Endpoint para que el frontend pida a PayPal un ID de orden
 export const createPaypalOrder = async (req, res) => {
     const { cartId, deliveryMethod } = req.body;

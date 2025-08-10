@@ -7,7 +7,7 @@ const userSchema = new Schema(
             type: String,
             required: [true, 'Por favor agrega un nombre'],
         },
-        latestName: {
+        lastName: {
             type: String,
             required: [false],
         },
