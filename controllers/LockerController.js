@@ -177,3 +177,21 @@ export const getAllLockers = async (req, res) => {
         res.status(500).json({ message: 'Error en el servidor.', error: error.message });
     }
 };
+
+/**
+ * @description 👤 ADMIN: Elimina un locker del sistema.
+ * @route DELETE /api/lockers/:CodeLocker
+ */
+export const deleteLocker = async (req, res) => {
+  try {
+    const { CodeLocker } = req.params;
+    const locker = await Locker.findOneAndDelete({ CodeLocker });
+
+    if (!locker) {
+      return res.status(404).json({ message: 'Locker no encontrado.' });
+    }
+    res.status(200).json({ message: 'Locker eliminado exitosamente.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error en el servidor.', error: error.message });
+  }
+};
