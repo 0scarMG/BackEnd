@@ -148,11 +148,10 @@ export const captureAndCreateOrder = async (req, res) => {
         await newOrder.save();
 
         let lockerCode = null;
-        // 4. (CONDICIONAL) Si es para recoger en tienda, creamos el locker
+
         if (deliveryMethod === 'TIENDA') {
             const customerCode = generateLockerCode();
-            // Usamos findOneAndUpdate para garantizar que la operación sea atómica (segura).
-            // Busca el locker libre y lo actualiza en un solo paso.
+
             const assignedLocker = await Locker.findOneAndUpdate(
                 { state: 'free' }, // Condición: Encuentra el que esté libre
                 {
@@ -167,9 +166,7 @@ export const captureAndCreateOrder = async (req, res) => {
 
             // Aunque ya verificamos antes, esta es una doble seguridad.
             if (!assignedLocker) {
-                // Esto no debería pasar, pero es una buena práctica manejarlo.
-                // Significa que entre la verificación y el pago, alguien más tomó el locker.
-                // Aquí deberías manejar una compensación (ej. revertir el pago, notificar al admin).
+
                 throw new Error('El locker fue ocupado inesperadamente.');
             }
             
