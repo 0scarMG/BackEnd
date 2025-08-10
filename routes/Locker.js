@@ -7,7 +7,7 @@ import {
     getLockerStatus,
     getAllLockers,
     deleteLocker
-} from '../controllers/locker.controller.js'; // Asegúrate de que la ruta a tu controlador sea correcta
+} from '../controllers/LockerController.js'; // Asegúrate de que la ruta a tu controlador sea correcta
 
 // Opcional: Aquí importarías tus middlewares de seguridad si los tuvieras
 // import { isAdmin, verifyToken } from '../middlewares/auth.js';
