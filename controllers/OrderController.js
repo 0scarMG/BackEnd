@@ -1,17 +1,65 @@
 import paypalClient from '../config/paypal.js';
 import paypal from '@paypal/checkout-server-sdk';
-import Cart from '../models/Cart.js';     
-import User from '../models/User.js';     
-import Order from '../models/Order.js';   
-import Locker from '../models/Locker.js'; 
-import Product from '../models/Products.js';
+import Cart from '../models/Cart.js';
+import User from '../models/User.js';
+import Order from '../models/Order.js';
+import Locker from '../models/Locker.js';
+import Product from '../models/Products.js'; // Asegúrate que el nombre del archivo sea Product.js
 import { generateLockerCode } from '../utils/codeGenerator.js';
 
+// --- ✅ OBTENER MIS PEDIDOS (VERSIÓN CORREGIDA CON AGREGACIÓN) ---
+// Esta función ahora une las órdenes con sus códigos de casillero.
+export const getMyOrders = async (req, res) => {
+  try {
+    const ordersWithLockerCodes = await Order.aggregate([
+      // 1. Encontrar todas las órdenes del usuario.
+      { $match: { userId: req.user._id } },
+      // 2. Ordenarlas por fecha.
+      { $sort: { createdAt: -1 } },
+      // 3. Unir con la colección 'lockers'.
+      {
+        $lookup: {
+          from: 'lockers', // La colección con la que queremos unir.
+          localField: '_id', // El campo de la colección 'Order'.
+          foreignField: 'orderId', // El campo de la colección 'Locker'.
+          as: 'lockerInfo' // Nombre del array temporal con los datos unidos.
+        }
+      },
+      // 4. Deconstruir el array 'lockerInfo' para facilitar el acceso.
+      {
+        $unwind: {
+          path: '$lockerInfo',
+          preserveNullAndEmptyArrays: true // Mantiene las órdenes aunque no tengan locker.
+        }
+      },
+      // 5. Darle forma al resultado final.
+      {
+        $project: {
+          // Incluimos todos los campos originales de la orden.
+          _id: 1, userId: 1, customer: 1, total: 1, status: 1,
+          orderDetails: 1, deliveryMethod: 1, paypalOrderId: 1,
+          createdAt: 1, updatedAt: 1,
+          // Añadimos el nuevo campo 'lockerCode'.
+          // Si 'lockerInfo' existe, toma su código; si no, es null.
+          lockerCode: '$lockerInfo.code'
+        }
+      }
+    ]);
 
-// OBTENER TODAS LAS ÓRDENES (SOLO ADMIN)
+    res.status(200).json(ordersWithLockerCodes);
+
+  } catch (error) {
+    console.error("Error obteniendo las órdenes del usuario:", error);
+    res.status(500).json({ message: "Error del servidor." });
+  }
+};
+
+
+// --- El resto de las funciones del controlador (sin cambios) ---
+
 export const getAllOrders = async (req, res) => {
     try {
-        const orders = await Order.find().sort({ createdAt: -1 }); // Ordena por fecha
+        const orders = await Order.find().sort({ createdAt: -1 });
         res.status(200).json(orders);
     } catch (error) {
         console.error("Error obteniendo las órdenes:", error);
@@ -19,19 +67,6 @@ export const getAllOrders = async (req, res) => {
     }
 };
 
-// OBTENER ÓRDENES DEL USUARIO LOGUEADO
-export const getMyOrders = async (req, res) => {
-  try {
-    // Busca las órdenes que coincidan con el ID del usuario del token
-    const orders = await Order.find({ userId: req.user._id }).sort({ createdAt: -1 }); // Ordena por fecha
-    res.status(200).json(orders);
-  } catch (error) {
-    console.error("Error obteniendo las órdenes:", error);
-    res.status(500).json({ message: "Error del servidor." });
-  }
-};
-
-// Endpoint para que el frontend pida a PayPal un ID de orden
 export const createPaypalOrder = async (req, res) => {
     const { cartId, deliveryMethod } = req.body;
     try {
@@ -41,17 +76,14 @@ export const createPaypalOrder = async (req, res) => {
         }
 
         if (deliveryMethod === 'TIENDA') {
-            // Buscamos un locker que esté libre ('free'). Como solo hay uno, la consulta es simple.
-            const availableLocker = await Locker.findOne({ state: 'free' });
-
+            const availableLocker = await Locker.findOne({ status: 'libre' });
             if (!availableLocker) {
-                // Si no se encuentra un locker libre, detenemos el proceso aquí.
                 return res.status(400).json({ 
-                    message: 'No hay lockers disponibles en este momento. Por favor, intenta más tarde o elige otro método de entrega.' 
+                    message: 'No hay lockers disponibles en este momento.' 
                 });
             }
         }
-        // Verificamos que haya suficiente stock para todos los productos del carrito
+        
         const unavailableProducts = [];
         for (const item of cart.items) {
             if (item.product.stock < item.quantity) {
@@ -63,31 +95,26 @@ export const createPaypalOrder = async (req, res) => {
             }
         }
 
-        // Si hay productos sin stock, detenemos el proceso y notificamos al cliente.
         if (unavailableProducts.length > 0) {
             return res.status(400).json({
-                message: 'No hay suficiente stock para uno o más productos de tu carrito.',
+                message: 'No hay suficiente stock para uno o más productos.',
                 unavailableProducts
             });
         }
 
-
         const request = new paypal.orders.OrdersCreateRequest();
         request.prefer("return=representation");
-        const requestBody = {
+        request.requestBody({
             intent: 'CAPTURE',
             purchase_units: [{
                 amount: { currency_code: 'MXN', value: cart.total.toFixed(2) }
             }],
             application_context: {
-                // Si es para recoger, no le pedimos dirección al usuario en PayPal
                 shipping_preference: deliveryMethod === 'TIENDA' ? 'NO_SHIPPING' : 'GET_FROM_FILE',
-                brand_name: 'Tu Tienda Increíble',
+                brand_name: 'K-Store',
                 user_action: 'PAY_NOW',
             }
-        };
-        
-        request.requestBody(requestBody);
+        });
         
         const order = await paypalClient.execute(request);
         res.status(200).json({ orderID: order.result.id });
@@ -98,10 +125,8 @@ export const createPaypalOrder = async (req, res) => {
     }
 };
 
-// Endpoint que se llama DESPUÉS de que el usuario aprueba el pago en PayPal
 export const captureAndCreateOrder = async (req, res) => {
     const { paypalOrderId, cartId, deliveryMethod } = req.body;
-
     const request = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
     request.requestBody({});
 
@@ -109,31 +134,24 @@ export const captureAndCreateOrder = async (req, res) => {
         const capture = await paypalClient.execute(request);
         const captureDetails = capture.result;
 
-        // 1. Validamos que el pago se completó
         if (captureDetails.status !== 'COMPLETED') {
             return res.status(400).json({ message: 'El pago no pudo ser completado.' });
         }
 
-        // 2. Obtenemos los datos necesarios (del carrito y del usuario)
         const cart = await Cart.findById(cartId).populate('items.product');
         const user = await User.findById(cart.userId);
 
         const stockUpdatePromises = cart.items.map(item =>
             Product.updateOne(
                 { _id: item.product._id },
-                { $inc: { stock: -item.quantity } } // $inc decrementa el valor de stock
+                { $inc: { stock: -item.quantity } }
             )
         );
-        // Ejecutamos todas las actualizaciones de stock en paralelo.
         await Promise.all(stockUpdatePromises);
 
-        // 3. Creamos la orden en nuestra base de datos
         const newOrder = new Order({
             userId: user._id,
-            customer: {
-                name: user.name,
-                email: user.email,
-            },
+            customer: { name: user.name, email: user.email },
             total: cart.total,
             status: 'Procesado',
             orderDetails: cart.items.map(item => ({
@@ -148,41 +166,28 @@ export const captureAndCreateOrder = async (req, res) => {
         await newOrder.save();
 
         let lockerCode = null;
-
         if (deliveryMethod === 'TIENDA') {
             const customerCode = generateLockerCode();
-
             const assignedLocker = await Locker.findOneAndUpdate(
-                { state: 'free' }, // Condición: Encuentra el que esté libre
-                {
-                    $set: {
-                        state: 'occupied',      // Acción: Lo marca como ocupado
-                        orderId: newOrder._id,
-                        code: customerCode       // Acción: Le asigna el código del cliente
-                    }
-                },
-                { new: true } // Opción: Devuelve el documento ya actualizado
+                { status: 'libre' },
+                { $set: { status: 'ocupado', orderId: newOrder._id, code: customerCode } },
+                { new: true }
             );
 
-            // Aunque ya verificamos antes, esta es una doble seguridad.
             if (!assignedLocker) {
-
                 throw new Error('El locker fue ocupado inesperadamente.');
             }
-            
-            lockerCode = assignedLocker.code; // Obtenemos el código del locker asignado.
+            lockerCode = assignedLocker.code;
         }
 
-        // 5. Limpiamos el carrito del usuario
         cart.items = [];
         cart.total = 0;
         await cart.save();
 
-        // 6. Enviamos la respuesta final al frontend
         res.status(201).json({
             message: '¡Pago completado y pedido creado!',
             order: newOrder,
-            lockerCode: lockerCode // Será null si no es para recoger en tienda
+            lockerCode: lockerCode
         });
 
     } catch (error) {
