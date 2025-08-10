@@ -40,6 +40,18 @@ export const createPaypalOrder = async (req, res) => {
             return res.status(400).json({ message: 'El carrito está vacío.' });
         }
 
+        if (deliveryMethod === 'TIENDA') {
+            // Buscamos un locker que esté libre ('free'). Como solo hay uno, la consulta es simple.
+            const availableLocker = await Locker.findOne({ state: 'free' });
+
+            if (!availableLocker) {
+                // Si no se encuentra un locker libre, detenemos el proceso aquí.
+                return res.status(400).json({ 
+                    message: 'No hay lockers disponibles en este momento. Por favor, intenta más tarde o elige otro método de entrega.' 
+                });
+            }
+        }
+        // Verificamos que haya suficiente stock para todos los productos del carrito
         const unavailableProducts = [];
         for (const item of cart.items) {
             if (item.product.stock < item.quantity) {
@@ -138,13 +150,30 @@ export const captureAndCreateOrder = async (req, res) => {
         let lockerCode = null;
         // 4. (CONDICIONAL) Si es para recoger en tienda, creamos el locker
         if (deliveryMethod === 'TIENDA') {
-            lockerCode = generateLockerCode();
-            const newLocker = new Locker({
-                orderId: newOrder._id, // Vinculamos el locker a la nueva orden
-                code: lockerCode,
-                // Los demás campos tomarán sus valores por defecto
-            });
-            await newLocker.save();
+            const customerCode = generateLockerCode();
+            // Usamos findOneAndUpdate para garantizar que la operación sea atómica (segura).
+            // Busca el locker libre y lo actualiza en un solo paso.
+            const assignedLocker = await Locker.findOneAndUpdate(
+                { state: 'free' }, // Condición: Encuentra el que esté libre
+                {
+                    $set: {
+                        state: 'occupied',      // Acción: Lo marca como ocupado
+                        orderId: newOrder._id,
+                        code: customerCode       // Acción: Le asigna el código del cliente
+                    }
+                },
+                { new: true } // Opción: Devuelve el documento ya actualizado
+            );
+
+            // Aunque ya verificamos antes, esta es una doble seguridad.
+            if (!assignedLocker) {
+                // Esto no debería pasar, pero es una buena práctica manejarlo.
+                // Significa que entre la verificación y el pago, alguien más tomó el locker.
+                // Aquí deberías manejar una compensación (ej. revertir el pago, notificar al admin).
+                throw new Error('El locker fue ocupado inesperadamente.');
+            }
+            
+            lockerCode = assignedLocker.code; // Obtenemos el código del locker asignado.
         }
 
         // 5. Limpiamos el carrito del usuario

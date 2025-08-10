@@ -12,6 +12,7 @@ import CartRouter from './routes/Cart.js';
 import ProductRouter from './routes/Product.js';
 import ArtistRouter from './routes/Artist.js';
 import OrderRouter from './routes/Order.js';
+import LockerRouter from './routes/Locker.js';
 
 import './models/Products.js'; // Importar el modelo de productos
 import './models/Category.js'; // Importar el modelo de categorías
@@ -40,3 +41,4 @@ app.use('/api/products', ProductRouter);
 app.use('/api/cart', CartRouter); 
 app.use('/api/artists', ArtistRouter);
 app.use('/api/orders', OrderRouter);
+app.use('/api/lockers', LockerRouter);
