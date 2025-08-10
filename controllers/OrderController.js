@@ -19,6 +19,18 @@ export const getAllOrders = async (req, res) => {
     }
 };
 
+export const getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).populate('userId', 'name email');
+    if (!order) {
+      return res.status(404).json({ message: 'Orden no encontrada.' });
+    }
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(500).json({ message: 'Error del servidor.' });
+  }
+};
+
 // OBTENER ÓRDENES DEL USUARIO LOGUEADO
 export const getMyOrders = async (req, res) => {
   try {
@@ -28,6 +40,23 @@ export const getMyOrders = async (req, res) => {
   } catch (error) {
     console.error("Error obteniendo las órdenes:", error);
     res.status(500).json({ message: "Error del servidor." });
+  }
+};
+
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Orden no encontrada.' });
+    }
+
+    order.status = status;
+    await order.save();
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar la orden.' });
   }
 };
 
@@ -133,6 +162,7 @@ export const captureAndCreateOrder = async (req, res) => {
             customer: {
                 name: user.name,
                 email: user.email,
+                address: user.address || 'No proporcionada',
             },
             total: cart.total,
             status: 'Procesado',

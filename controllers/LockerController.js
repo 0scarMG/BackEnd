@@ -35,7 +35,7 @@ export const updateLocker = async (req, res) => {
     try {
         const { CodeLocker } = req.params;
         // Recibe los campos que el IoT puede actualizar: sus sensores y estado de la puerta/led
-        const { sensor1, sensor2, sensor3, gate, led } = req.body; 
+        const { sensor1, sensor2, sensor3, gate, led, state } = req.body; 
 
         const locker = await Locker.findOne({ CodeLocker });
         if (!locker) {
@@ -69,6 +69,7 @@ export const updateLocker = async (req, res) => {
         if (sensor3 !== undefined) locker.sensor3 = sensor3;
         if (gate !== undefined) locker.gate = gate;
         if (led !== undefined) locker.led = led;
+        if (state !== undefined) locker.state = state;
         
         await locker.save();
         res.status(200).json({ message: 'Estado del locker actualizado.', locker });

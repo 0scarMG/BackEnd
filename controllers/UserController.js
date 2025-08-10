@@ -348,3 +348,65 @@ export const resetPassword = async (req, res) => {
         res.status(500).json({ message: 'Error al restablecer la contraseña.' });
     }
 };
+
+// @desc    ADMIN: Obtener todos los usuarios
+export const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find({});
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Error interno del servidor.' });
+  }
+};
+
+// @desc    ADMIN: Obtener un usuario por ID
+export const getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado.' });
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: 'Error interno del servidor.' });
+  }
+};
+
+// @desc    ADMIN: Actualizar un usuario (ej. cambiar su rol)
+export const updateUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (user) {
+      user.name = req.body.name || user.name;
+      user.lastName = req.body.lastName || user.lastName;
+      user.address = req.body.address || user.address;
+      user.phone = req.body.phone || user.phone;
+      user.email = req.body.email || user.email;
+      user.role = req.body.role || user.role;
+
+      const updatedUser = await user.save();
+      res.status(200).json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        latestName: updatedUser.lastName,
+        address: updatedUser.address,
+        phone: updatedUser.phone,
+        email: updatedUser.email,
+        role: updatedUser.role,
+      });
+    } else {
+      res.status(404).json({ message: 'Usuario no encontrado.' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar usuario.' });
+  }
+};
+
+// @desc    ADMIN: Eliminar un usuario
+export const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado.' });
+    res.status(200).json({ message: 'Usuario eliminado.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al eliminar usuario.' });
+  }
+};
