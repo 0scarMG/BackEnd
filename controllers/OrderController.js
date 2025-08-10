@@ -4,11 +4,11 @@ import Cart from '../models/Cart.js';
 import User from '../models/User.js';
 import Order from '../models/Order.js';
 import Locker from '../models/Locker.js';
-import Product from '../models/Products.js'; // Asegúrate que el nombre del archivo sea Product.js
+import Product from '../models/Products.js';
 import { generateLockerCode } from '../utils/codeGenerator.js';
 
 // --- ✅ OBTENER MIS PEDIDOS (VERSIÓN CORREGIDA CON AGREGACIÓN) ---
-// Esta función ahora une las órdenes con sus códigos de casillero.
+// Esta función une las órdenes con sus códigos de casillero.
 export const getMyOrders = async (req, res) => {
   try {
     const ordersWithLockerCodes = await Order.aggregate([
@@ -54,8 +54,7 @@ export const getMyOrders = async (req, res) => {
   }
 };
 
-
-// --- El resto de las funciones del controlador (sin cambios) ---
+// --- OTRAS FUNCIONES DEL CONTROLADOR ---
 
 export const getAllOrders = async (req, res) => {
     try {
@@ -67,6 +66,36 @@ export const getAllOrders = async (req, res) => {
     }
 };
 
+export const getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id).populate('userId', 'name email');
+    if (!order) {
+      return res.status(404).json({ message: 'Orden no encontrada.' });
+    }
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(500).json({ message: 'Error del servidor.' });
+  }
+};
+
+export const updateOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Orden no encontrada.' });
+    }
+
+    order.status = status;
+    await order.save();
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar la orden.' });
+  }
+};
+
+// Endpoint para que el frontend pida a PayPal un ID de orden
 export const createPaypalOrder = async (req, res) => {
     const { cartId, deliveryMethod } = req.body;
     try {
@@ -151,7 +180,11 @@ export const captureAndCreateOrder = async (req, res) => {
 
         const newOrder = new Order({
             userId: user._id,
-            customer: { name: user.name, email: user.email },
+            customer: {
+                name: user.name,
+                email: user.email,
+                address: user.address || 'No proporcionada',
+            },
             total: cart.total,
             status: 'Procesado',
             orderDetails: cart.items.map(item => ({
@@ -175,6 +208,7 @@ export const captureAndCreateOrder = async (req, res) => {
             );
 
             if (!assignedLocker) {
+                // Esto es una salvaguarda por si el locker se ocupó entre el chequeo y la asignación
                 throw new Error('El locker fue ocupado inesperadamente.');
             }
             lockerCode = assignedLocker.code;
