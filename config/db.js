@@ -7,19 +7,6 @@ const connectDB = async () => {
     const MONGO_URI_ATLAS = process.env.MONGO_URI_ATLAS;
     const MONGO_URI_LOCAL = process.env.MONGO_URI_LOCAL;
 
-    // --- Intento 1: Conectar a Railway (Máxima Prioridad) ---
-    if (MONGO_URI_RAILWAY) {
-        try {
-            console.log('🔌 Intentando conectar a Railway...');
-            const conn = await mongoose.connect(MONGO_URI_RAILWAY);
-            console.log(`✅ MongoDB Conectado en Railway: ${conn.connection.host}`);
-            return; // Conexión exitosa, salimos de la función
-        } catch (error) {
-            console.warn(`⚠️  Error al conectar a Railway: ${error.message}`);
-            // Si falla, no hacemos nada y dejamos que continúe al siguiente bloque
-        }
-    }
-
     // --- Intento 2: Conectar a MongoDB Atlas (Si Railway falla) ---
     if (MONGO_URI_ATLAS) {
         try {
@@ -33,6 +20,17 @@ const connectDB = async () => {
         }
     }
 
+    if (MONGO_URI_RAILWAY) {
+        try {
+            console.log('🔌 Intentando conectar a Railway...');
+            const conn = await mongoose.connect(MONGO_URI_RAILWAY);
+            console.log(`✅ MongoDB Conectado en Railway: ${conn.connection.host}`);
+            return; // Conexión exitosa, salimos de la función
+        } catch (error) {
+            console.warn(`⚠️  Error al conectar a Railway: ${error.message}`);
+            // Si falla, no hacemos nada y dejamos que continúe al siguiente bloque
+        }
+    }
     // --- Intento 3: Conectar a MongoDB Local (Último recurso) ---
     if (MONGO_URI_LOCAL) {
         try {
