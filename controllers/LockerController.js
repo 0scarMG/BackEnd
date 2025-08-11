@@ -78,77 +78,6 @@ export const updateLocker = async (req, res) => {
         res.status(500).json({ message: 'Error en el servidor.', error: error.message });
     }
 };
-
-/**
- * @description 👤 CLIENTE: Abre el locker usando el código que se le proporcionó.
- * @route POST /api/lockers/open
- */
-export const openLockerByCustomerCode = async (req, res) => {
-    try {
-        const { code } = req.body;
-        if (!code) {
-            return res.status(400).json({ message: 'El código es requerido.' });
-        }
-
-        // Busca un locker que tenga ese código y esté ocupado
-        const locker = await Locker.findOne({ code, state: 'occupied' });
-
-        if (!locker) {
-            return res.status(404).json({ message: 'Código inválido, expirado o el locker no está ocupado.' });
-        }
-
-        // Le "ordena" al locker que se abra. El ESP32 leerá este estado.
-        locker.gate = 'open';
-        locker.led = 'on';
-        await locker.save();
-
-        res.status(200).json({ 
-            message: 'Comando de apertura enviado.',
-            CodeLocker: locker.CodeLocker // Devuelve el ID físico del locker
-        });
-    } catch (error) {
-        res.status(500).json({ message: 'Error en el servidor.', error: error.message });
-    }
-};
-
-/**
- * @description 🤖 IOT: Actualiza únicamente los valores de los sensores de un locker.
- * @route PATCH /api/lockers/sensors/:CodeLocker
- */
-export const updateLockerSensors = async (req, res) => {
-    try {
-        const { CodeLocker } = req.params;
-        // Solo nos interesan los valores de los sensores del cuerpo de la petición
-        const { sensor1, sensor2, sensor3 } = req.body;
-
-        // Validamos que al menos un valor de sensor fue enviado
-        if (sensor1 === undefined && sensor2 === undefined && sensor3 === undefined) {
-            return res.status(400).json({ message: 'No se proporcionaron valores de sensores para actualizar.' });
-        }
-
-        const updateData = {};
-        if (sensor1 !== undefined) updateData.sensor1 = sensor1;
-        if (sensor2 !== undefined) updateData.sensor2 = sensor2;
-        if (sensor3 !== undefined) updateData.sensor3 = sensor3;
-
-        // Usamos findOneAndUpdate para encontrar el locker por su CodeLocker y actualizarlo
-        const updatedLocker = await Locker.findOneAndUpdate(
-            { CodeLocker: CodeLocker },
-            { $set: updateData },
-            { new: true } // Esta opción hace que devuelva el documento ya actualizado
-        );
-
-        if (!updatedLocker) {
-            return res.status(404).json({ message: 'Locker no encontrado.' });
-        }
-
-        res.status(200).json({ message: 'Valores de sensores actualizados exitosamente.', locker: updatedLocker });
-
-    } catch (error) {
-        res.status(500).json({ message: 'Error en el servidor al actualizar sensores.', error: error.message });
-    }
-};
-
 /**
  * @description 🤖 IOT / 👤 ADMIN: Obtiene el estado actual y completo de un locker específico.
  * @route GET /api/lockers/:CodeLocker
@@ -195,4 +124,72 @@ export const deleteLocker = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Error en el servidor.', error: error.message });
   }
+};
+
+
+/**
+ * @description 🤖 IOT: Valida un código de cliente y abre el locker si es correcto.
+ * @route POST /api/lockers/open
+ */
+export const openLockerByCode = async (req, res) => {
+    try {
+        const { CodeLocker, code } = req.body;
+
+        if (!CodeLocker || !code) {
+            return res.status(400).json({ message: 'CodeLocker y código son requeridos.' });
+        }
+
+        const locker = await Locker.findOne({ CodeLocker });
+        if (!locker) {
+            return res.status(404).json({ message: 'Locker no encontrado.' });
+        }
+
+        // Verifica si el locker está en estado 'occupied' y si el código coincide
+        if (locker.state === 'occupied' && locker.code === code) {
+            // Si todo es correcto, actualiza el estado del locker
+            locker.gate = 'open';
+            locker.led = 'on';
+            await locker.save();
+
+            // Responde con el estado actualizado
+            return res.status(200).json({ 
+                message: 'Código validado. Puerta abierta y LED encendido.', 
+                locker 
+            });
+        } else if (locker.state !== 'occupied') {
+            return res.status(403).json({ message: 'El locker no está ocupado.' });
+        } else {
+            return res.status(401).json({ message: 'Código inválido.' });
+        }
+
+    } catch (error) {
+        res.status(500).json({ message: 'Error en el servidor.', error: error.message });
+    }
+};
+
+/**
+ * @description 🤖 IOT: Actualiza los valores de los sensores del locker.
+ * @route PUT /api/lockers/sensors/:CodeLocker
+ */
+export const updateSensors = async (req, res) => {
+    try {
+        const { CodeLocker } = req.params;
+        const { sensor1, sensor2, sensor3 } = req.body;
+
+        const locker = await Locker.findOne({ CodeLocker });
+        if (!locker) {
+            return res.status(404).json({ message: 'Locker no encontrado.' });
+        }
+        
+        // Actualiza solo los sensores que se envíen
+        if (sensor1 !== undefined) locker.sensor1 = sensor1;
+        if (sensor2 !== undefined) locker.sensor2 = sensor2;
+        if (sensor3 !== undefined) locker.sensor3 = sensor3;
+
+        await locker.save();
+        res.status(200).json({ message: 'Valores de sensores actualizados.', locker });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Error en el servidor.', error: error.message });
+    }
 };
