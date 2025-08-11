@@ -130,8 +130,8 @@ export const openLockerByCode = async (req, res) => {
             locker.gate = 'close';
             locker.led = 'off';
             locker.state = 'free'; // Cambia el estado a libre
-            locker.orderId = null; // Limpia la referencia a la orden
-            locker.code = null; // Limpia el código del locker
+            locker.orderId = ''; // Limpia la referencia a la orden
+            locker.code = ''; // Limpia el código del locker
             await locker.save();
             return res.status(200).json({ 
                 message: 'Código de cierre validado. Puerta cerrada y LED apagado.', 
