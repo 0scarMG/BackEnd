@@ -106,7 +106,7 @@ export const createPaypalOrder = async (req, res) => {
         }
 
         if (deliveryMethod === 'TIENDA') {
-            const availableLocker = await Locker.findOne({ status: 'libre' });
+            const availableLocker = await Locker.findOne({ state: 'free' });
             if (!availableLocker) {
                 return res.status(400).json({ 
                     message: 'No hay lockers disponibles en este momento.' 
@@ -203,8 +203,8 @@ export const captureAndCreateOrder = async (req, res) => {
         if (deliveryMethod === 'TIENDA') {
             const customerCode = generateLockerCode();
             const assignedLocker = await Locker.findOneAndUpdate(
-                { status: 'libre' },
-                { $set: { status: 'ocupado', orderId: newOrder._id, code: customerCode } },
+                { state: 'free' },
+                { $set: { state: 'occupied', orderId: newOrder._id, code: customerCode } },
                 { new: true }
             );
 

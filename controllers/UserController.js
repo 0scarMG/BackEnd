@@ -153,8 +153,11 @@ export const updateUserProfile = async (req, res) => {
         const user = await User.findById(req.user.id);
 
         if (user) {
-            // Actualizar nombre (sin verificación)
+            // Actualizar campos simples (si no vienen en el body, se mantiene el valor anterior)
             user.name = req.body.name || user.name;
+            user.lastName = req.body.lastName || user.lastName;
+            user.address = req.body.address || user.address;
+            user.phone = req.body.phone || user.phone;
 
             // Actualizar email (con verificación de contraseña)
             if (req.body.newEmail) {
@@ -176,12 +179,17 @@ export const updateUserProfile = async (req, res) => {
                 user.email = newEmail;
             }
 
+            // Guardar todos los cambios en la base de datos
             const updatedUser = await user.save();
 
+            // Devolver el usuario completamente actualizado
             res.status(200).json({
                 _id: updatedUser._id,
                 name: updatedUser.name,
-                email: updatedUser.email,
+                lastName: updatedUser.lastName,
+                address: updatedUser.address,
+                phone: updatedUser.phone,
+                email: updatedUser.email
             });
 
         } else {
