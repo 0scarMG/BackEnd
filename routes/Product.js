@@ -1,6 +1,6 @@
 // routes/Product.js
 import express from 'express';
-import { getProducts, createProduct, getProductById, updateProduct, deleteProduct } from '../controllers/ProductController.js'; 
+import { getProducts, createProduct, getProductById, updateProduct, deleteProduct, getPreventaProducts } from '../controllers/ProductController.js'; 
 import { uploadCloudinary } from '../config/cloudinary.js';
 import protect from '../middleware/authMiddleware.js';
 import { authorize } from '../middleware/authzMiddleware.js';
@@ -10,6 +10,7 @@ const router = express.Router();
 
 
 router.get('/', getProducts);
+router.get('/preventa', getPreventaProducts);
 router.get('/:id', getProductById);
 
 
@@ -30,6 +31,8 @@ router.put(
   uploadCloudinary.single('image'), 
   updateProduct
 );
+
+
 
 // DELETE para eliminar un producto (solo admins)
 router.delete(

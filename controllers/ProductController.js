@@ -183,3 +183,13 @@ export const deleteProduct = async (req, res) => {
     res.status(500).json({ message: 'Error interno del servidor.' });
   }
 };
+
+export const getPreventaProducts = async (req, res) => {
+  try {
+    // Busca productos donde 'prevent' es true y limita el resultado (ej. a 10)
+    const products = await Product.find({ prevent: true }).limit(10).populate('category').populate('artist');
+    res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({ message: 'Error interno del servidor.' });
+  }
+};
