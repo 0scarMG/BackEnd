@@ -42,25 +42,6 @@ export const updateLocker = async (req, res) => {
             return res.status(404).json({ message: 'Locker no encontrado.' });
         }
 
-        // --- Lógica de reseteo automático ---
-        // Si el locker estaba ocupado y los sensores ahora marcan cero, significa que el producto fue retirado.
-        const isNowEmpty = sensor1 === 0 && sensor2 === 0 && sensor3 === 0;
-        if (locker.state === 'occupied' && isNowEmpty) {
-            locker.state = 'free';      // Lo marca como libre
-            locker.gate = 'close';      // Asegura que la puerta se cierre
-            locker.led = 'off';         // Apaga el indicador
-            locker.orderId = null;      // Desvincula la orden
-            locker.code = null;         // Borra el código temporal del cliente
-
-            // Actualiza los valores de los sensores a su estado actual
-            locker.sensor1 = sensor1;
-            locker.sensor2 = sensor2;
-            locker.sensor3 = sensor3;
-
-            await locker.save();
-            // Devuelve el estado actualizado, indicando que se ha reseteado
-            return res.status(200).json({ message: 'Locker vaciado y reseteado a estado libre.', locker });
-        }
         
         // --- Actualización normal ---
         // Si no se cumple la condición de reseteo, simplemente actualiza los campos que llegaron en la petición.
@@ -144,14 +125,23 @@ export const openLockerByCode = async (req, res) => {
             return res.status(404).json({ message: 'Locker no encontrado.' });
         }
 
-        // Verifica si el locker está en estado 'occupied' y si el código coincide
+        // Lógica para cerrar el locker con el código 111111
+        if (code === '111111') {
+            locker.gate = 'close';
+            locker.led = 'off';
+            await locker.save();
+            return res.status(200).json({ 
+                message: 'Código de cierre validado. Puerta cerrada y LED apagado.', 
+                locker 
+            });
+        }
+
+        // Lógica original para abrir el locker
         if (locker.state === 'occupied' && locker.code === code) {
-            // Si todo es correcto, actualiza el estado del locker
             locker.gate = 'open';
             locker.led = 'on';
             await locker.save();
 
-            // Responde con el estado actualizado
             return res.status(200).json({ 
                 message: 'Código validado. Puerta abierta y LED encendido.', 
                 locker 
@@ -166,6 +156,7 @@ export const openLockerByCode = async (req, res) => {
         res.status(500).json({ message: 'Error en el servidor.', error: error.message });
     }
 };
+
 
 /**
  * @description 🤖 IOT: Actualiza los valores de los sensores del locker.
